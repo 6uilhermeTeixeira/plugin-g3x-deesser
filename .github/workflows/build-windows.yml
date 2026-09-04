@@ -23,20 +23,24 @@ jobs:
         run: cmake --build build/windows --config Release --parallel 2
       - name: Run DSP tests
         run: ctest --test-dir build/windows -C Release --output-on-failure
-      - name: Generate SHA-256
+      - name: Test VST3 packaging
         shell: pwsh
-        run: |
-          $bundle = "build/windows/G3XDeEsser_artefacts/Release/VST3/G3X DeEsser.vst3"
-          if (-not (Test-Path $bundle)) { throw "G3X DeEsser VST3 not found" }
-          $binary = Get-ChildItem $bundle -Recurse -File | Select-Object -First 1
-          $hash = (Get-FileHash $binary.FullName -Algorithm SHA256).Hash.ToLower()
-          "$hash  $($binary.Name)" | Set-Content "build/windows/G3XDeEsser_artefacts/Release/SHA256SUMS.txt"
+        run: ./scripts/test-package-vst3.ps1
+      - name: Package Windows VST3
+        shell: pwsh
+        run: ./scripts/package-vst3.ps1 -BundlePath "build/windows/G3XDeEsser_artefacts/Release/VST3/G3X DeEsser.vst3" -Destination dist
       - name: Upload Windows VST3
+        id: artifact
         uses: actions/upload-artifact@v4
         with:
           name: G3X-DeEsser-Windows-x64-${{ github.sha }}
-          path: |
-            build/windows/G3XDeEsser_artefacts/Release/VST3/G3X DeEsser.vst3
-            build/windows/G3XDeEsser_artefacts/Release/SHA256SUMS.txt
+          path: dist/
           if-no-files-found: error
           retention-days: 30
+      - name: Download instructions
+        shell: pwsh
+        env:
+          ARTIFACT_URL: ${{ steps.artifact.outputs.artifact-url }}
+        run: |
+          "[Download Windows x64 VST3]($env:ARTIFACT_URL) — available for 30 days." >> $env:GITHUB_STEP_SUMMARY
+          "Extract the ZIP, verify SHA256SUMS.txt, then copy the entire G3X DeEsser.vst3 folder to your VST3 directory." >> $env:GITHUB_STEP_SUMMARY

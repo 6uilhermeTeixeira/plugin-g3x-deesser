@@ -6,4 +6,4 @@ build/
 *.suo
 *.log
 .DS_Store
-
+/dist/
